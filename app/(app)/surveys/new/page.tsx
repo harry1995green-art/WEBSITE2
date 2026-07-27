@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth";
 import { createSurvey } from "../actions";
 import { PageHeader, Card, Label, Input, SubmitButton } from "@/components/ui";
 
@@ -9,7 +8,6 @@ export default async function NewSurveyPage({
   searchParams: Promise<{ jobId?: string }>;
 }) {
   const { jobId } = await searchParams;
-  const user = await getSessionUser();
   const job = jobId
     ? await prisma.job.findUnique({ where: { id: jobId }, include: { contact: true } })
     : null;
@@ -31,7 +29,7 @@ export default async function NewSurveyPage({
           </div>
           <div>
             <Label>Surveyor name</Label>
-            <Input name="surveyorName" required defaultValue={user?.name ?? ""} />
+            <Input name="surveyorName" required />
           </div>
           <div>
             <Label>Roof type</Label>

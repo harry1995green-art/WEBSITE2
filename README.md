@@ -9,6 +9,13 @@ toggle at the top of every page. All data (leads, jobs, contacts, tasks,
 finance, calendar, wages, staff, surveys) is kept fully separate per
 organization.
 
+> **No login.** There is currently no authentication — anyone with the URL
+> has full read/write access. This was a deliberate choice to unblock access
+> quickly; if you want a login back, a previous version of this app had one
+> (cookie session + a seeded admin user) — ask for it to be reinstated, or
+> put the deployment behind your host's own access control (e.g. Vercel's
+> Deployment Protection) in the meantime.
+
 ## Getting started
 
 You need a Postgres database for local development too (the schema targets
@@ -18,26 +25,21 @@ use a free instance from [Neon](https://neon.tech) or
 
 ```bash
 npm install
-cp .env.example .env   # then fill in DATABASE_URL + the secrets
+cp .env.example .env   # then fill in DATABASE_URL + CRM_API_KEY
 npm run db:migrate     # applies the schema to your Postgres database
-npm run db:seed        # creates the AR & BA orgs and your login user
+npm run db:seed        # creates the AR & BA orgs
 npm run dev
 ```
 
-Then sign in at `http://localhost:3000/login` with the `ADMIN_EMAIL` /
-`ADMIN_PASSWORD` you set in `.env`.
+Then just open `http://localhost:3000` — it goes straight to the dashboard.
 
 ### Environment variables
 
 | Variable                 | Purpose                                                              |
 | ------------------------- | --------------------------------------------------------------------- |
 | `DATABASE_URL`            | Postgres connection string (can be a pooled one, e.g. PgBouncer)      |
-| `DATABASE_URL_UNPOOLED`   | Direct/non-pooled connection — required by `prisma migrate`           |
-| `SESSION_SECRET`          | Signs login session cookies — set a long random string                |
+| `DATABASE_URL_UNPOOLED`   | Direct/non-pooled connection — required by `prisma db push`/`migrate` |
 | `CRM_API_KEY`             | Bearer token required by the `/api/*` automation endpoints            |
-| `ADMIN_EMAIL`             | Used to create/update the login user (by seed and on every boot)      |
-| `ADMIN_NAME`              | ″                                                                      |
-| `ADMIN_PASSWORD`          | ″                                                                      |
 | `UPLOAD_DIR`              | Where survey photos are written on disk if not using Blob storage     |
 | `BLOB_READ_WRITE_TOKEN`   | If set (Vercel Blob), survey photos are stored there instead of disk  |
 
@@ -46,10 +48,9 @@ otherwise they're written to disk under `UPLOAD_DIR` and served through
 `/api/uploads/...`. On a host without persistent disk *and* without Blob
 configured, uploaded photos will not survive a redeploy.
 
-On boot, the app (via `instrumentation.ts`) makes sure the AR/BA orgs and the
-admin login user (from the env vars above) exist. On Vercel, database
-migrations run once at build time instead (see the `vercel-build` script);
-everywhere else, they also run automatically on boot.
+On boot, the app (via `instrumentation.ts`) makes sure the AR/BA orgs exist.
+On Vercel, the database schema is synced once at build time instead (see the
+`vercel-build` script); everywhere else, it also runs automatically on boot.
 
 ## Deploying to Vercel
 
@@ -63,12 +64,10 @@ everywhere else, they also run automatically on boot.
    - **Create → Blob**, and connect it to the project. This automatically
      adds `BLOB_READ_WRITE_TOKEN` — no copying needed.
 3. In **Settings → Environment Variables**, add:
-   - `SESSION_SECRET` = a long random string
    - `CRM_API_KEY` = a long random string (used by the automation API below)
-   - `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD` = your login
-4. Deploy. The build runs `prisma migrate deploy` automatically (see
-   `vercel-build` in `package.json`), and the app seeds the orgs + your
-   login the first time it boots.
+4. Deploy. The build runs `prisma db push` automatically (see `vercel-build`
+   in `package.json`), and the app seeds the AR/BA orgs the first time it
+   boots.
 5. Your live URL is shown on the project's Overview page (or add a custom
    domain under Settings → Domains).
 
@@ -81,8 +80,8 @@ Same idea, but instead of connecting Blob storage, add a persistent volume
   on that platform, or use Neon/Supabase there too)
 - `UPLOAD_DIR` = `/data/uploads`
 
-Everything else (`SESSION_SECRET`, `CRM_API_KEY`, `ADMIN_*`) is the same as
-above. Migrations and seeding run automatically on boot on these platforms.
+`CRM_API_KEY` is the same as above. Schema sync and seeding run automatically
+on boot on these platforms.
 
 ## Modules
 
@@ -156,6 +155,5 @@ Pipeline stage values: `NEW_ENQUIRY`, `CONTACTED`, `SITE_VISIT`, `QUOTE_SENT`,
 - Prisma 5 + Postgres (enum-like fields are stored as plain strings for
   flexibility; valid values are documented as comments in
   `prisma/schema.prisma`)
-- Auth is a minimal signed-cookie session (`lib/auth.ts`) — one shared login,
-  no third-party auth provider
+- No authentication — see the note near the top of this file
 - `npm run build` runs a full TypeScript + Next.js production build check

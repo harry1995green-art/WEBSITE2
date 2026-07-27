@@ -1,22 +1,9 @@
-import { redirect } from "next/navigation";
-import { LogOut } from "lucide-react";
-import { getSessionUser } from "@/lib/auth";
 import { getActiveOrg, getActiveOrgSlug } from "@/lib/org";
-import { logout } from "./actions";
 import OrgSwitcher from "./OrgSwitcher";
 import SidebarNav from "./SidebarNav";
 import MobileMenu from "./MobileMenu";
 
-// Set DISABLE_AUTH=true to skip the login requirement entirely — anyone
-// with the URL gets full access, no password. Unset (or "false") to
-// restore normal login enforcement.
-const AUTH_DISABLED = process.env.DISABLE_AUTH === "true";
-
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const sessionUser = await getSessionUser();
-  if (!AUTH_DISABLED && !sessionUser) redirect("/login");
-  const user = sessionUser ?? { name: "Team" };
-
   const [org, slug] = await Promise.all([getActiveOrg(), getActiveOrgSlug()]);
 
   return (
@@ -36,25 +23,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
           <div className="flex items-center gap-3">
             <OrgSwitcher active={slug} />
-            <MobileMenu orgName={org.name} userName={user.name} />
+            <MobileMenu orgName={org.name} />
           </div>
         </div>
       </header>
 
       <div className="flex">
         <aside className="hidden md:flex md:flex-col md:w-64 shrink-0 border-r border-slate-200 bg-white min-h-[calc(100vh-4rem)] py-4 print:hidden">
-          <div className="flex-1">
-            <SidebarNav />
-          </div>
-          <form
-            action={logout}
-            className="mt-4 flex items-center justify-between px-5 py-4 border-t border-slate-100"
-          >
-            <span className="text-sm text-slate-600 truncate">{user.name}</span>
-            <button type="submit" aria-label="Log out" className="text-slate-400 hover:text-slate-600">
-              <LogOut size={18} />
-            </button>
-          </form>
+          <SidebarNav />
         </aside>
 
         <main className="flex-1 min-w-0 p-4 md:p-8 print:p-0">{children}</main>

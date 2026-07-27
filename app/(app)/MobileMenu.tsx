@@ -1,17 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, X, LogOut } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import SidebarNav from "./SidebarNav";
-import { logout } from "./actions";
 
-export default function MobileMenu({
-  orgName,
-  userName,
-}: {
-  orgName: string;
-  userName: string;
-}) {
+export default function MobileMenu({ orgName }: { orgName: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -44,15 +37,6 @@ export default function MobileMenu({
             <div className="flex-1 overflow-y-auto py-4">
               <SidebarNav onNavigate={() => setOpen(false)} />
             </div>
-            <form
-              action={logout}
-              className="flex items-center justify-between px-5 py-4 border-t border-slate-100"
-            >
-              <span className="text-sm text-slate-600">{userName}</span>
-              <button type="submit" aria-label="Log out" className="text-slate-400">
-                <LogOut size={18} />
-              </button>
-            </form>
           </div>
         </div>
       ) : null}
