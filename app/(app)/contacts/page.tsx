@@ -1,10 +1,16 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, AlertTriangle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getActiveOrg } from "@/lib/org";
-import { PageHeader, PrimaryLink, Card, EmptyState } from "@/components/ui";
+import { PageHeader, PrimaryLink, Card, Label, Input, DangerButton, EmptyState } from "@/components/ui";
+import { deleteAllOrgData } from "./actions";
 
-export default async function ContactsPage() {
+export default async function ContactsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ reset?: string; resetError?: string }>;
+}) {
+  const { reset, resetError } = await searchParams;
   const org = await getActiveOrg();
   const contacts = await prisma.contact.findMany({
     where: { orgId: org.id },
@@ -23,10 +29,21 @@ export default async function ContactsPage() {
         }
       />
 
+      {reset === "done" ? (
+        <div className="mb-4 rounded-lg bg-emerald-50 text-emerald-700 text-sm px-3 py-2 border border-emerald-100">
+          All {org.name} data has been deleted.
+        </div>
+      ) : null}
+      {resetError ? (
+        <div className="mb-4 rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2 border border-red-100">
+          {resetError}
+        </div>
+      ) : null}
+
       {contacts.length === 0 ? (
         <EmptyState message="No contacts yet." />
       ) : (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden mb-8">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-slate-500">
@@ -51,6 +68,25 @@ export default async function ContactsPage() {
           </table>
         </Card>
       )}
+
+      <Card className="p-6 border-red-200">
+        <div className="flex items-center gap-2 text-red-600 font-bold mb-2">
+          <AlertTriangle size={18} />
+          Danger zone
+        </div>
+        <p className="text-sm text-slate-600 mb-4">
+          Permanently deletes every contact, lead, job, task, invoice, calendar event, and
+          survey for <strong>{org.name}</strong>. Staff and wages are not affected. This cannot
+          be undone.
+        </p>
+        <form action={deleteAllOrgData} className="flex items-end gap-3 flex-wrap">
+          <div className="w-64">
+            <Label>Type &ldquo;{org.name}&rdquo; to confirm</Label>
+            <Input name="confirmation" placeholder={org.name} required />
+          </div>
+          <DangerButton type="submit">Delete all {org.name} data</DangerButton>
+        </form>
+      </Card>
     </div>
   );
 }
