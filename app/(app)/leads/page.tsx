@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getActiveOrg } from "@/lib/org";
 import { formatGBP, formatDateShort } from "@/lib/constants";
@@ -26,9 +26,17 @@ export default async function LeadsPage() {
         title="Leads"
         subtitle={`${leads.length} total`}
         action={
-          <PrimaryLink href="/leads/new">
-            <Plus size={16} /> New Lead
-          </PrimaryLink>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/leads/import"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition"
+            >
+              <Upload size={16} /> Import CSV
+            </Link>
+            <PrimaryLink href="/leads/new">
+              <Plus size={16} /> New Lead
+            </PrimaryLink>
+          </div>
         }
       />
 
