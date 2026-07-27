@@ -27,8 +27,11 @@ export async function ensureSeedData() {
     create: { slug: "BA", name: "Ballers Abroad" },
   });
 
-  const email = process.env.ADMIN_EMAIL;
-  const name = process.env.ADMIN_NAME;
+  // Trim + lowercase to match how the login form normalizes the email it's
+  // given (lib/login/actions.ts) — otherwise stray whitespace or casing in
+  // the ADMIN_EMAIL env var silently creates a user that can never match.
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const name = process.env.ADMIN_NAME?.trim();
   const password = process.env.ADMIN_PASSWORD;
 
   if (email && name && password) {
