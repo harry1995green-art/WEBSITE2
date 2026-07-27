@@ -7,9 +7,15 @@ import OrgSwitcher from "./OrgSwitcher";
 import SidebarNav from "./SidebarNav";
 import MobileMenu from "./MobileMenu";
 
+// Set DISABLE_AUTH=true to skip the login requirement entirely — anyone
+// with the URL gets full access, no password. Unset (or "false") to
+// restore normal login enforcement.
+const AUTH_DISABLED = process.env.DISABLE_AUTH === "true";
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
+  const sessionUser = await getSessionUser();
+  if (!AUTH_DISABLED && !sessionUser) redirect("/login");
+  const user = sessionUser ?? { name: "Team" };
 
   const [org, slug] = await Promise.all([getActiveOrg(), getActiveOrgSlug()]);
 
