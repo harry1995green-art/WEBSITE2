@@ -31,7 +31,8 @@ Then sign in at `http://localhost:3000/login` with the `ADMIN_EMAIL` /
 
 | Variable                 | Purpose                                                              |
 | ------------------------- | --------------------------------------------------------------------- |
-| `DATABASE_URL`            | Postgres connection string                                            |
+| `DATABASE_URL`            | Postgres connection string (can be a pooled one, e.g. PgBouncer)      |
+| `DATABASE_URL_UNPOOLED`   | Direct/non-pooled connection — required by `prisma migrate`           |
 | `SESSION_SECRET`          | Signs login session cookies — set a long random string                |
 | `CRM_API_KEY`             | Bearer token required by the `/api/*` automation endpoints            |
 | `ADMIN_EMAIL`             | Used to create/update the login user (by seed and on every boot)      |
@@ -55,10 +56,10 @@ everywhere else, they also run automatically on boot.
 1. In the Vercel dashboard: **Add New → Project** → import this GitHub repo.
    Vercel detects Next.js automatically.
 2. Before the first deploy, go to the project's **Storage** tab:
-   - **Create Database → Postgres** (via the Neon or Supabase integration —
-     either works). Connect it to the project; this injects a Postgres
-     connection string as an env var. Copy that value into a `DATABASE_URL`
-     variable if it isn't named that already.
+   - **Create Database → Postgres** (via the Neon integration). Connect it to
+     the project — this injects several env vars, including `DATABASE_URL`
+     and `DATABASE_URL_UNPOOLED`. Both are needed as-is (see the table
+     above); no copying required if they're named exactly that.
    - **Create → Blob**, and connect it to the project. This automatically
      adds `BLOB_READ_WRITE_TOKEN` — no copying needed.
 3. In **Settings → Environment Variables**, add:
