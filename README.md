@@ -32,10 +32,33 @@ Then sign in at `http://localhost:3000/login` with the `ADMIN_EMAIL` /
 | `ADMIN_EMAIL`    | Used only by `prisma/seed.ts` to create the first login user        |
 | `ADMIN_NAME`     | ″                                                                    |
 | `ADMIN_PASSWORD` | ″                                                                    |
+| `UPLOAD_DIR`     | Where survey photos are written on disk (default `public/uploads`) |
 
-Uploaded survey photos are written to `public/uploads/` on disk. If you
-deploy somewhere without persistent disk storage (e.g. serverless), point
-that at a volume or swap `lib/uploads.ts` for cloud storage.
+Survey photos are served through `/api/uploads/...` (see
+`app/api/uploads/[...path]/route.ts`), reading from `UPLOAD_DIR`. Point that
+at a mounted persistent volume in production (see below) — without one,
+photos vanish on every redeploy.
+
+On boot, the app (via `instrumentation.ts`) automatically runs
+`prisma migrate deploy` and re-creates the AR/BA orgs + the admin login user
+from the env vars above if they don't already exist — no manual shell step
+needed after a deploy.
+
+## Deploying to Railway
+
+1. In the Railway dashboard: **New Project → Deploy from GitHub repo** →
+   select this repo. Railway auto-detects Next.js via Nixpacks.
+2. Add a **Volume**, mounted at `/data`.
+3. Set these service variables:
+   - `DATABASE_URL` = `file:/data/prod.db`
+   - `UPLOAD_DIR` = `/data/uploads`
+   - `SESSION_SECRET` = a long random string
+   - `CRM_API_KEY` = a long random string (used by the automation API below)
+   - `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD` = your login
+4. Deploy. The first boot creates the SQLite database on the volume, applies
+   migrations, and seeds the orgs + your login automatically.
+5. Generate a public domain for the service (Settings → Networking →
+   Generate Domain) to get the live URL.
 
 ## Modules
 

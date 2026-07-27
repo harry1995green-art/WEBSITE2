@@ -1,37 +1,15 @@
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
+import { prisma } from "../lib/prisma";
+import { ensureSeedData } from "../lib/bootstrap";
 
 async function main() {
-  await prisma.organization.upsert({
-    where: { slug: "AR" },
-    update: {},
-    create: { slug: "AR", name: "Artisanic Roofing" },
-  });
+  await ensureSeedData();
 
-  await prisma.organization.upsert({
-    where: { slug: "BA" },
-    update: {},
-    create: { slug: "BA", name: "Ballers Abroad" },
-  });
-
-  const email = process.env.ADMIN_EMAIL;
-  const name = process.env.ADMIN_NAME;
-  const password = process.env.ADMIN_PASSWORD;
-
-  if (email && name && password) {
-    const passwordHash = await bcrypt.hash(password, 10);
-    await prisma.user.upsert({
-      where: { email },
-      update: { name, passwordHash },
-      create: { email, name, passwordHash },
-    });
-    console.log(`Seeded login user: ${email}`);
-  } else {
+  if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_NAME || !process.env.ADMIN_PASSWORD) {
     console.warn(
       "ADMIN_EMAIL / ADMIN_NAME / ADMIN_PASSWORD not set — skipped creating a login user. Set them in .env and re-run.",
     );
+  } else {
+    console.log(`Seeded login user: ${process.env.ADMIN_EMAIL}`);
   }
 
   console.log("Seeded organizations: Artisanic Roofing (AR), Ballers Abroad (BA)");
