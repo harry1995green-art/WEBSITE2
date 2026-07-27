@@ -47,9 +47,44 @@ export async function updateLeadStatus(leadId: string, formData: FormData) {
 }
 
 export async function deleteLead(leadId: string) {
+  await prisma.job.updateMany({ where: { leadId }, data: { leadId: null } });
   await prisma.lead.delete({ where: { id: leadId } }).catch(() => null);
   revalidatePath("/leads");
   redirect("/leads");
+}
+
+export async function bulkDeleteLeads(formData: FormData) {
+  const ids = formData.getAll("leadIds").map(String).filter(Boolean);
+  if (ids.length === 0) {
+    redirect("/leads");
+  }
+
+  // A lead's linked job (once converted) is real pipeline work — unlink it
+  // rather than deleting it along with the lead.
+  await prisma.job.updateMany({ where: { leadId: { in: ids } }, data: { leadId: null } });
+  const { count } = await prisma.lead.deleteMany({ where: { id: { in: ids } } });
+
+  revalidatePath("/leads");
+  revalidatePath("/jobs");
+  revalidatePath("/dashboard");
+  redirect(`/leads?bulkDeleted=${count}`);
+}
+
+export async function deleteAllLeads(formData: FormData) {
+  const org = await getActiveOrg();
+  const confirmation = String(formData.get("confirmation") ?? "").trim();
+
+  if (confirmation !== org.name) {
+    redirect(`/leads?deleteAllError=${encodeURIComponent("Typed name didn't match — nothing was deleted.")}`);
+  }
+
+  await prisma.job.updateMany({ where: { orgId: org.id, leadId: { not: null } }, data: { leadId: null } });
+  const { count } = await prisma.lead.deleteMany({ where: { orgId: org.id } });
+
+  revalidatePath("/leads");
+  revalidatePath("/jobs");
+  revalidatePath("/dashboard");
+  redirect(`/leads?deleteAllDone=${count}`);
 }
 
 export async function convertLeadToJob(leadId: string) {
