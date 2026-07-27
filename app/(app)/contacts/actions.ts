@@ -41,6 +41,29 @@ export async function updateContact(contactId: string, formData: FormData) {
   revalidatePath(`/contacts/${contactId}`);
 }
 
+export async function bulkDeleteContacts(formData: FormData) {
+  const ids = formData.getAll("contactIds").map(String).filter(Boolean);
+  if (ids.length === 0) {
+    redirect("/contacts");
+  }
+
+  // A duplicate contact from a botched import usually came bundled with a
+  // duplicate lead — remove those too. Anything more substantial (jobs,
+  // tasks, surveys) just gets unlinked, not destroyed.
+  await prisma.lead.deleteMany({ where: { contactId: { in: ids } } });
+  await prisma.job.updateMany({ where: { contactId: { in: ids } }, data: { contactId: null } });
+  await prisma.task.updateMany({ where: { contactId: { in: ids } }, data: { contactId: null } });
+  await prisma.survey.updateMany({ where: { contactId: { in: ids } }, data: { contactId: null } });
+
+  const { count } = await prisma.contact.deleteMany({ where: { id: { in: ids } } });
+
+  revalidatePath("/contacts");
+  revalidatePath("/leads");
+  revalidatePath("/jobs");
+  revalidatePath("/dashboard");
+  redirect(`/contacts?bulkDeleted=${count}`);
+}
+
 export async function deleteAllOrgData(formData: FormData) {
   const org = await getActiveOrg();
   const confirmation = String(formData.get("confirmation") ?? "").trim();
