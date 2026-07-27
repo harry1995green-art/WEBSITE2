@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Plus, Upload, AlertTriangle } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getActiveOrg } from "@/lib/org";
-import { formatGBP, formatDateShort } from "@/lib/constants";
+import { formatGBP, formatDateShort, LEAD_STATUS_LABELS } from "@/lib/constants";
 import { PageHeader, Card, PrimaryLink, Label, Input, DangerButton, Badge, EmptyState } from "@/components/ui";
 import { bulkDeleteLeads, deleteAllLeads } from "./actions";
 import SelectAllCheckbox from "./SelectAllCheckbox";
@@ -11,6 +11,8 @@ import DeleteSelectedButton from "./DeleteSelectedButton";
 const STATUS_COLOR = {
   NEW: "blue",
   QUALIFIED: "violet",
+  NO_ANSWER: "amber",
+  UNABLE_TO_QUOTE: "slate",
   CONVERTED: "emerald",
   LOST: "red",
 } as const;
@@ -105,7 +107,7 @@ export default async function LeadsPage({
                     </td>
                     <td className="px-5 py-3">
                       <Badge color={STATUS_COLOR[lead.status as keyof typeof STATUS_COLOR] ?? "slate"}>
-                        {lead.status}
+                        {LEAD_STATUS_LABELS[lead.status as keyof typeof LEAD_STATUS_LABELS] ?? lead.status}
                       </Badge>
                     </td>
                     <td className="px-5 py-3 hidden sm:table-cell text-slate-600">

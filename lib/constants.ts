@@ -25,8 +25,24 @@ export function stageDot(stage: string) {
   return PIPELINE_STAGES.find((s) => s.value === stage)?.dot ?? "bg-slate-400";
 }
 
-export const LEAD_STATUSES = ["NEW", "QUALIFIED", "CONVERTED", "LOST"] as const;
+export const LEAD_STATUSES = [
+  "NEW",
+  "QUALIFIED",
+  "NO_ANSWER",
+  "UNABLE_TO_QUOTE",
+  "CONVERTED",
+  "LOST",
+] as const;
 export type LeadStatusValue = (typeof LEAD_STATUSES)[number];
+
+export const LEAD_STATUS_LABELS: Record<LeadStatusValue, string> = {
+  NEW: "New",
+  QUALIFIED: "Qualified",
+  NO_ANSWER: "No Answer",
+  UNABLE_TO_QUOTE: "Unable to Quote",
+  CONVERTED: "Converted",
+  LOST: "Lost",
+};
 
 export const TASK_STATUSES = ["OPEN", "DONE"] as const;
 export const INVOICE_STATUSES = ["OUTSTANDING", "PAID"] as const;

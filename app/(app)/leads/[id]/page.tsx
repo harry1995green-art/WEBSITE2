@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { ArrowRight, Trash2 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getActiveOrg } from "@/lib/org";
-import { formatGBP, formatDateShort, LEAD_STATUSES } from "@/lib/constants";
+import { formatGBP, formatDateShort, LEAD_STATUSES, LEAD_STATUS_LABELS } from "@/lib/constants";
 import { Card, Label, Select, SubmitButton, DangerButton } from "@/components/ui";
 import { updateLeadStatus, deleteLead, convertLeadToJob } from "../actions";
 
@@ -68,7 +68,7 @@ export default async function LeadDetailPage({
             <Select name="status" defaultValue={lead.status}>
               {LEAD_STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {LEAD_STATUS_LABELS[s]}
                 </option>
               ))}
             </Select>
