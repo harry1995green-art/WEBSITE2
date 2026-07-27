@@ -2,7 +2,7 @@
 
 A CRM for **Artisanic Roofing** and **Ballers Abroad**, plus a roof survey tool
 with photo uploads and scoring. Built with Next.js (App Router), Prisma, and
-SQLite.
+Postgres.
 
 Both businesses share one app — switch between them with the **AR / BA**
 toggle at the top of every page. All data (leads, jobs, contacts, tasks,
@@ -11,10 +11,15 @@ organization.
 
 ## Getting started
 
+You need a Postgres database for local development too (the schema targets
+Postgres so it matches production) — either run one locally/in Docker, or
+use a free instance from [Neon](https://neon.tech) or
+[Supabase](https://supabase.com).
+
 ```bash
 npm install
-cp .env.example .env   # then edit the values, especially the secrets
-npm run db:migrate     # creates prisma/dev.db and applies the schema
+cp .env.example .env   # then fill in DATABASE_URL + the secrets
+npm run db:migrate     # applies the schema to your Postgres database
 npm run db:seed        # creates the AR & BA orgs and your login user
 npm run dev
 ```
@@ -24,41 +29,59 @@ Then sign in at `http://localhost:3000/login` with the `ADMIN_EMAIL` /
 
 ### Environment variables
 
-| Variable         | Purpose                                                            |
-| ---------------- | -------------------------------------------------------------------|
-| `DATABASE_URL`   | SQLite file path (default `file:./dev.db`)                         |
-| `SESSION_SECRET` | Signs login session cookies — set a long random string             |
-| `CRM_API_KEY`    | Bearer token required by the `/api/*` automation endpoints          |
-| `ADMIN_EMAIL`    | Used only by `prisma/seed.ts` to create the first login user        |
-| `ADMIN_NAME`     | ″                                                                    |
-| `ADMIN_PASSWORD` | ″                                                                    |
-| `UPLOAD_DIR`     | Where survey photos are written on disk (default `public/uploads`) |
+| Variable                 | Purpose                                                              |
+| ------------------------- | --------------------------------------------------------------------- |
+| `DATABASE_URL`            | Postgres connection string                                            |
+| `SESSION_SECRET`          | Signs login session cookies — set a long random string                |
+| `CRM_API_KEY`             | Bearer token required by the `/api/*` automation endpoints            |
+| `ADMIN_EMAIL`             | Used to create/update the login user (by seed and on every boot)      |
+| `ADMIN_NAME`              | ″                                                                      |
+| `ADMIN_PASSWORD`          | ″                                                                      |
+| `UPLOAD_DIR`              | Where survey photos are written on disk if not using Blob storage     |
+| `BLOB_READ_WRITE_TOKEN`   | If set (Vercel Blob), survey photos are stored there instead of disk  |
 
-Survey photos are served through `/api/uploads/...` (see
-`app/api/uploads/[...path]/route.ts`), reading from `UPLOAD_DIR`. Point that
-at a mounted persistent volume in production (see below) — without one,
-photos vanish on every redeploy.
+Survey photos go to Vercel Blob storage when `BLOB_READ_WRITE_TOKEN` is set;
+otherwise they're written to disk under `UPLOAD_DIR` and served through
+`/api/uploads/...`. On a host without persistent disk *and* without Blob
+configured, uploaded photos will not survive a redeploy.
 
-On boot, the app (via `instrumentation.ts`) automatically runs
-`prisma migrate deploy` and re-creates the AR/BA orgs + the admin login user
-from the env vars above if they don't already exist — no manual shell step
-needed after a deploy.
+On boot, the app (via `instrumentation.ts`) makes sure the AR/BA orgs and the
+admin login user (from the env vars above) exist. On Vercel, database
+migrations run once at build time instead (see the `vercel-build` script);
+everywhere else, they also run automatically on boot.
 
-## Deploying to Railway
+## Deploying to Vercel
 
-1. In the Railway dashboard: **New Project → Deploy from GitHub repo** →
-   select this repo. Railway auto-detects Next.js via Nixpacks.
-2. Add a **Volume**, mounted at `/data`.
-3. Set these service variables:
-   - `DATABASE_URL` = `file:/data/prod.db`
-   - `UPLOAD_DIR` = `/data/uploads`
+1. In the Vercel dashboard: **Add New → Project** → import this GitHub repo.
+   Vercel detects Next.js automatically.
+2. Before the first deploy, go to the project's **Storage** tab:
+   - **Create Database → Postgres** (via the Neon or Supabase integration —
+     either works). Connect it to the project; this injects a Postgres
+     connection string as an env var. Copy that value into a `DATABASE_URL`
+     variable if it isn't named that already.
+   - **Create → Blob**, and connect it to the project. This automatically
+     adds `BLOB_READ_WRITE_TOKEN` — no copying needed.
+3. In **Settings → Environment Variables**, add:
    - `SESSION_SECRET` = a long random string
    - `CRM_API_KEY` = a long random string (used by the automation API below)
    - `ADMIN_EMAIL`, `ADMIN_NAME`, `ADMIN_PASSWORD` = your login
-4. Deploy. The first boot creates the SQLite database on the volume, applies
-   migrations, and seeds the orgs + your login automatically.
-5. Generate a public domain for the service (Settings → Networking →
-   Generate Domain) to get the live URL.
+4. Deploy. The build runs `prisma migrate deploy` automatically (see
+   `vercel-build` in `package.json`), and the app seeds the orgs + your
+   login the first time it boots.
+5. Your live URL is shown on the project's Overview page (or add a custom
+   domain under Settings → Domains).
+
+## Deploying to Railway / Render / Fly (persistent volume instead of Blob)
+
+Same idea, but instead of connecting Blob storage, add a persistent volume
+(e.g. mounted at `/data`) and set:
+
+- `DATABASE_URL` = a Postgres connection string (add a Postgres plugin/addon
+  on that platform, or use Neon/Supabase there too)
+- `UPLOAD_DIR` = `/data/uploads`
+
+Everything else (`SESSION_SECRET`, `CRM_API_KEY`, `ADMIN_*`) is the same as
+above. Migrations and seeding run automatically on boot on these platforms.
 
 ## Modules
 
@@ -129,8 +152,9 @@ Pipeline stage values: `NEW_ENQUIRY`, `CONTACTED`, `SITE_VISIT`, `QUOTE_SENT`,
 ## Tech notes
 
 - Next.js App Router, TypeScript, Tailwind CSS v4
-- Prisma 5 + SQLite (enums are stored as plain strings — SQLite has no native
-  enum type; valid values are documented as comments in `prisma/schema.prisma`)
+- Prisma 5 + Postgres (enum-like fields are stored as plain strings for
+  flexibility; valid values are documented as comments in
+  `prisma/schema.prisma`)
 - Auth is a minimal signed-cookie session (`lib/auth.ts`) — one shared login,
   no third-party auth provider
 - `npm run build` runs a full TypeScript + Next.js production build check
