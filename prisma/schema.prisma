@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  createdAt DateTime @default(now())
+
+  contacts  Contact[]
+  leads     Lead[]
+  jobs      Job[]
+  tasks     Task[]
+  invoices  Invoice[]
+  events    CalendarEvent[]
+  staff     StaffMember[]
+  wages     WageEntry[]
+  surveys   Survey[]
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  leads     Lead[]
+  jobs      Job[]
+  tasks     Task[]
+  surveys   Survey[]
+
+  @@index([orgId])
+}
+
+// LeadStatus (string): NEW | QUALIFIED | CONVERTED | LOST — see lib/constants.ts
+model Lead {
+  id        String     @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  contactId String?
+  contact   Contact?   @relation(fields: [contactId], references: [id])
+  title     String
+  source    String?
+  value     Float?
+  notes     String?
+  status    String     @default("NEW")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  job       Job?
+
+  @@index([orgId])
+}
+
+// PipelineStage (string): NEW_ENQUIRY | CONTACTED | SITE_VISIT | QUOTE_SENT | ACCEPTED | IN_PROGRESS | COMPLETED | INVOICED | LOST
+model Job {
+  id            String        @id @default(cuid())
+  orgId         String
+  org           Organization  @relation(fields: [orgId], references: [id])
+  leadId        String?       @unique
+  lead          Lead?         @relation(fields: [leadId], references: [id])
+  contactId     String?
+  contact       Contact?      @relation(fields: [contactId], references: [id])
+  title         String
+  address       String?
+  stage         String        @default("NEW_ENQUIRY")
+  value         Float?
+  scheduledDate DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  tasks         Task[]
+  invoices      Invoice[]
+  events        CalendarEvent[]
+  surveys       Survey[]
+  stageHistory  JobStageEvent[]
+
+  @@index([orgId])
+  @@index([stage])
+}
+
+model JobStageEvent {
+  id        String        @id @default(cuid())
+  jobId     String
+  job       Job           @relation(fields: [jobId], references: [id])
+  stage     String
+  note      String?
+  createdAt DateTime      @default(now())
+
+  @@index([jobId])
+}
+
+// TaskStatus (string): OPEN | DONE
+model Task {
+  id        String     @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  title     String
+  dueDate   DateTime?
+  status    String     @default("OPEN")
+  jobId     String?
+  job       Job?       @relation(fields: [jobId], references: [id])
+  contactId String?
+  contact   Contact?   @relation(fields: [contactId], references: [id])
+  createdAt DateTime   @default(now())
+
+  @@index([orgId])
+}
+
+// InvoiceStatus (string): OUTSTANDING | PAID
+model Invoice {
+  id        String        @id @default(cuid())
+  orgId     String
+  org       Organization  @relation(fields: [orgId], references: [id])
+  jobId     String?
+  job       Job?          @relation(fields: [jobId], references: [id])
+  reference String?
+  amount    Float
+  status    String        @default("OUTSTANDING")
+  issuedAt  DateTime      @default(now())
+  paidAt    DateTime?
+  notes     String?
+
+  @@index([orgId])
+}
+
+model CalendarEvent {
+  id        String   @id @default(cuid())
+  orgId     String
+  org       Organization @relation(fields: [orgId], references: [id])
+  jobId     String?
+  job       Job?     @relation(fields: [jobId], references: [id])
+  title     String
+  date      DateTime
+  type      String?
+  notes     String?
+
+  @@index([orgId])
+}
+
+model StaffMember {
+  id         String   @id @default(cuid())
+  orgId      String
+  org        Organization @relation(fields: [orgId], references: [id])
+  name       String
+  role       String?
+  email      String?
+  phone      String?
+  hourlyRate Float?
+  active     Boolean  @default(true)
+
+  wages      WageEntry[]
+
+  @@index([orgId])
+}
+
+model WageEntry {
+  id         String      @id @default(cuid())
+  orgId      String
+  org        Organization @relation(fields: [orgId], references: [id])
+  staffId    String
+  staff      StaffMember @relation(fields: [staffId], references: [id])
+  weekEnding DateTime
+  hours      Float
+  amount     Float
+  paid       Boolean     @default(false)
+  notes      String?
+
+  @@index([orgId])
+}
+
+// SurveyStatus (string): DRAFT | COMPLETED
+model Survey {
+  id              String       @id @default(cuid())
+  orgId           String
+  org             Organization @relation(fields: [orgId], references: [id])
+  jobId           String?
+  job             Job?         @relation(fields: [jobId], references: [id])
+  contactId       String?
+  contact         Contact?     @relation(fields: [contactId], references: [id])
+  propertyAddress String
+  surveyorName    String
+  surveyDate      DateTime     @default(now())
+  roofType        String?
+  overallScore    Float?
+  status          String       @default("DRAFT")
+  summary         String?
+  createdAt       DateTime     @default(now())
+
+  sections        SurveySection[]
+
+  @@index([orgId])
+}
+
+model SurveySection {
+  id        String   @id @default(cuid())
+  surveyId  String
+  survey    Survey   @relation(fields: [surveyId], references: [id])
+  name      String
+  score     Int?
+  condition String?
+  notes     String?
+  order     Int      @default(0)
+
+  photos    SurveyPhoto[]
+
+  @@index([surveyId])
+}
+
+model SurveyPhoto {
+  id        String        @id @default(cuid())
+  sectionId String
+  section   SurveySection @relation(fields: [sectionId], references: [id])
+  url       String
+  caption   String?
+  createdAt DateTime      @default(now())
+
+  @@index([sectionId])
+}
